@@ -42,6 +42,9 @@ from DDSim.Helper.Action import Action
 from DDSim.Helper.Random import Random
 from DDSim.Helper.Filter import Filter
 from DDSim.Helper.Physics import Physics
+from DDSim.Helper.GuineaPig import GuineaPig
+from DDSim.Helper.LCIO import LCIO
+from DDSim.Helper.Meta import Meta
 
 import os
 import sys
@@ -83,9 +86,14 @@ class DD4hepSimulation(object):
     self.part = ParticleHandler()
     self.field = MagneticField()
     self.action = Action()
+    self.guineapig = GuineaPig()
+    self.lcio = LCIO()
+    self.meta = Meta()
 
     self.filter = Filter()
     self.physics = Physics()
+
+    self._argv = None
 
     ### use TCSH geant UI instead of QT
     os.environ['G4UI_USE_TCSH'] = "1"
@@ -106,8 +114,12 @@ class DD4hepSimulation(object):
         self.__dict__ = obj.__dict__
     self.steeringFile = os.path.abspath(sFileTemp)
 
-  def parseOptions(self):
+  def parseOptions(self, argv=None):
     """parse the command line options"""
+
+    if argv is None:
+      self._argv = list(sys.argv)
+
     parser = argparse.ArgumentParser("Running DD4hep Simulations:",
                                      formatter_class=argparse.RawTextHelpFormatter)
 
@@ -115,10 +127,15 @@ class DD4hepSimulation(object):
                         help="Steering file to change default behaviour")
 
     #first we parse just the steering file, but only if we don't want to see the help message
-    if not any( opt in sys.argv for opt in ('-h','--help')):
+    if not any( opt in self._argv for opt in ('-h','--help')):
       parsed, _unknown = parser.parse_known_args()
       self.steeringFile = parsed.steeringFile
       self.readSteeringFile()
+
+    ## readSteeringFile will set self._argv to None if there is a steering file
+    if self._argv is None:
+      self._argv = list(argv) if argv else list(sys.argv)
+
 
     parser.add_argument("--compactFile", action="store", default=self.compactFile,
                         help="The compact XML file")
@@ -181,7 +198,7 @@ class DD4hepSimulation(object):
                         help="print an example steering file to stdout")
 
     #output, or do something smarter with fullHelp only for example
-    self.__addAllHelper( parser )
+    ConfigHelper.addAllHelper(self, parser)
     ## now parse everything. The default values are now taken from the
     ## steeringFile if they were set so that the steering file parameters can be
     ## overwritten from the command line
@@ -233,16 +250,16 @@ class DD4hepSimulation(object):
       exit(1)
 
   @staticmethod
-  def getDetectorLists( lcdd ):
-    ''' get lists of trackers and calorimeters that are defined in lcdd (the compact xml file)'''
+  def getDetectorLists( detectorDescription ):
+    ''' get lists of trackers and calorimeters that are defined in detectorDescription (the compact xml file)'''
     import DDG4
   #  if len(detectorList):
   #    print " subset list of detectors given - will only instantiate these: " , detectorList
     trackers,calos = [],[]
-    for i in lcdd.detectors():
+    for i in detectorDescription.detectors():
       det = DDG4.DetElement(i.second.ptr())
       name = det.name()
-      sd =  lcdd.sensitiveDetector( name )
+      sd =  detectorDescription.sensitiveDetector( name )
       if sd.isValid():
         detType = sd.type()
   #      if len(detectorList) and not(name in detectorList):
@@ -271,9 +288,9 @@ class DD4hepSimulation(object):
     #kernel.setOutputLevel('Compact',1)
 
     kernel.loadGeometry("file:"+ self.compactFile )
-    lcdd = kernel.lcdd()
+    detectorDescription = kernel.detectorDescription()
 
-    DDG4.importConstants( lcdd )
+    DDG4.importConstants( detectorDescription )
 
   #----------------------------------------------------------------------------------
 
@@ -316,6 +333,9 @@ class DD4hepSimulation(object):
     if self.outputFile.endswith(".slcio"):
       lcOut = simple.setupLCIOOutput('LcioOutput', self.outputFile)
       lcOut.RunHeader = self.__addParametersToRunHeader()
+      lcOut.EventParametersString, lcOut.EventParametersInt, lcOut.EventParametersFloat = self.meta.parseEventParameters()
+      lcOut.RunNumberOffset = self.meta.runNumberOffset if self.meta.runNumberOffset > 0 else 0
+      lcOut.EventNumberOffset = self.meta.eventNumberOffset if self.meta.eventNumberOffset > 0 else 0
     elif self.outputFile.endswith(".root"):
       simple.setupROOTOutput('RootOutput', self.outputFile)
 
@@ -349,6 +369,7 @@ class DD4hepSimulation(object):
     for index,inputFile in enumerate(self.inputFiles, start=4):
       if inputFile.endswith(".slcio"):
         gen = DDG4.GeneratorAction(kernel,"LCIOInputAction/LCIO%d" % index)
+        gen.Parameters = self.lcio.getParameters()
         gen.Input="LCIOFileReader|"+inputFile
       elif inputFile.endswith(".stdhep"):
         gen = DDG4.GeneratorAction(kernel,"LCIOInputAction/STDHEP%d" % index)
@@ -363,8 +384,9 @@ class DD4hepSimulation(object):
         gen = DDG4.GeneratorAction(kernel,"Geant4InputAction/hepmc%d" % index)
         gen.Input="Geant4EventReaderHepMC|"+inputFile
       elif inputFile.endswith(".pairs"):
-        gen = DDG4.GeneratorAction(kernel,"Geant4InputAction/HEPEvt%d" % index)
+        gen = DDG4.GeneratorAction(kernel,"Geant4InputAction/GuineaPig%d" % index)
         gen.Input="Geant4EventReaderGuineaPig|"+inputFile
+        gen.Parameters = self.guineapig.getParameters()
       else:
         ##this should never happen because we already check at the top, but in case of some LogicError...
         raise RuntimeError( "Unknown input file type: %s" % inputFile )
@@ -391,13 +413,32 @@ class DD4hepSimulation(object):
     part.MinDistToParentVertex= self.part.minDistToParentVertex
     part.OutputLevel = self.output.part
     part.enableUI()
+
+
+    if self.part.enableDetailedHitsAndParticleInfo:
+      self.part.setDumpDetailedParticleInfo( kernel, DDG4 )
+
+    #----------------------------------
+
+
+
+
     user = DDG4.Action(kernel,"Geant4TCUserParticleHandler/UserParticleHandler")
     try:
       user.TrackingVolume_Zmax = DDG4.tracker_region_zmax
       user.TrackingVolume_Rmax = DDG4.tracker_region_rmax
-    except AttributeError as e:
-      print "No Attribute: ", str(e)
 
+      print " *** definition of tracker region *** "
+      print "    tracker_region_zmax = " ,  user.TrackingVolume_Zmax
+      print "    tracker_region_rmax = " ,  user.TrackingVolume_Rmax
+      print " ************************************ "
+
+    except AttributeError as e:
+      print "ERROR - attribute of tracker region missing in detector model   ", str(e)
+      print "   make sure to specify the global constants tracker_region_zmax and tracker_region_rmax "
+      print "   this is needed for the MC-truth link of created sim-hits  !  "
+      exit(1)
+      
     #  user.enableUI()
     part.adopt(user)
 
@@ -411,9 +452,9 @@ class DD4hepSimulation(object):
       exit(1)
 
     #=================================================================================
-    # get lists of trackers and calorimeters in lcdd
+    # get lists of trackers and calorimeters in detectorDescription
 
-    trk,cal = self.getDetectorLists( lcdd )
+    trk,cal = self.getDetectorLists( detectorDescription )
 
     # ---- add the trackers:
     try:
@@ -456,8 +497,19 @@ class DD4hepSimulation(object):
 
     #DDG4.setPrintLevel(Output.DEBUG)
 
+    startUpTime, _sysTime, _cuTime, _csTime, _elapsedTime = os.times()
+
     kernel.run()
     kernel.terminate()
+
+    totalTimeUser, totalTimeSys, _cuTime, _csTime, _elapsedTime = os.times()
+    if self.printLevel <= 3:
+      eventTime = totalTimeUser - startUpTime
+      perEventTime =  eventTime / float(self.numberOfEvents)
+      print "DDSim            INFO  Total Time:   %3.2f s (User), %3.2f s (System)"% (totalTimeUser, totalTimeSys)
+      print "DDSim            INFO  StartUp Time: %3.2f s, Event Processing: %3.2f s (%3.2f s/Event) " \
+        % (startUpTime, eventTime, perEventTime)
+
 
   def __setMagneticFieldOptions(self, simple):
     """ create and configure the magnetic tracking setup """
@@ -498,30 +550,6 @@ class DD4hepSimulation(object):
       vSmear.Mask = mask
       actionList.append(vSmear)
 
-  def __addAllHelper( self , parser ):
-    """all configHelper objects to commandline args"""
-    for name, obj in vars(self).iteritems():
-      if isinstance( obj, ConfigHelper ):
-        for var,valAndDoc in obj.getOptions().iteritems():
-          if var.startswith("enable"):
-            parser.add_argument("--%s.%s" % (name, var),
-                                action="store_true",
-                                dest="%s.%s" % (name, var),
-                                default = valAndDoc[0],
-                                help = valAndDoc[1],
-                                #choices = valAndDoc[2], ##not allowed for store_true
-                                # type = type(val),
-                               )
-          else:
-            parser.add_argument("--%s.%s" % (name, var),
-                                action="store",
-                                dest="%s.%s" % (name, var),
-                                default = valAndDoc[0],
-                                help = valAndDoc[1],
-                                choices = valAndDoc[2],
-                                # type = type(val),
-                               )
-
 
   def __parseAllHelper( self, parsed ):
     """ parse all the options for the helper """
@@ -560,8 +588,8 @@ class DD4hepSimulation(object):
     for parName, parameter in parameters.iteritems():
       if isinstance( parameter, ConfigHelper ):
         options = parameter.getOptions()
-        for opt,valAndDoc in options.iteritems():
-          runHeader["%s.%s"%(parName, opt)] = str(valAndDoc[0])
+        for opt,optionsDict in options.iteritems():
+          runHeader["%s.%s"%(parName, opt)] = str(optionsDict['default'])
       else:
         runHeader[parName] = str(parameter)
 
@@ -576,8 +604,8 @@ class DD4hepSimulation(object):
         runHeader["MacroFileContent"] = mFile.read()
 
     ### add command line
-    if sys.argv:
-      runHeader["CommandLine"] = " ".join(sys.argv)
+    if self._argv:
+      runHeader["CommandLine"] = " ".join(self._argv)
 
     ### add current working directory (where we call from)
     runHeader["WorkingDirectory"] = os.getcwd()
@@ -608,12 +636,18 @@ class DD4hepSimulation(object):
       for pattern in self.action.mapActions:
         if pattern.lower() in det.lower():
           action = self.action.mapActions[pattern]
+          print  '       replace default action with : ' , action 
           break
       seq,act = setupFuction( det, type=action )
       self.filter.applyFilters( seq, det, defaultFilter )
+
       ##set detailed hit creation mode for this
       if self.enableDetailedShowerMode:
-        act.HitCreationMode = 2
+        if isinstance(act, list):
+          for a in act:
+            a.HitCreationMode = 2
+        else:
+          act.HitCreationMode = 2
 
   def __printSteeringFile( self, parser):
     """print the parameters formated as a steering file"""
@@ -634,10 +668,12 @@ SIM = DD4hepSimulation()
         steeringFileBase += "## %s \n" % "\n## ".join( parameter.__doc__.splitlines() )
         steeringFileBase += "################################################################################\n"
         options = parameter.getOptions()
-        for opt,valAndDoc in sorted( options.iteritems(), sortParameters ):
-          parValue, parDoc, _parOptions = valAndDoc
-          if parDoc:
-            steeringFileBase += "\n## %s\n" % "\n## ".join(parDoc.splitlines())
+        for opt, optionsDict in sorted( options.iteritems(), sortParameters ):
+          if opt.startswith("_"):
+            continue
+          parValue = optionsDict['default']
+          if isinstance(optionsDict.get('help'), basestring):
+            steeringFileBase += "\n## %s\n" % "\n## ".join(optionsDict.get('help').splitlines())
           ## add quotes if it is a string
           if isinstance( parValue, basestring ):
             steeringFileBase += "SIM.%s.%s = \"%s\"\n" %(parName, opt, parValue)

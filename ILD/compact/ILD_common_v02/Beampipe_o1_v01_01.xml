@@ -1,0 +1,175 @@
+<lccdd>
+
+  <detectors>        
+
+
+<detector name="Tube" type="DD4hep_Beampipe_o1_v01" vis="BeamPipeVis" id="ILDDetID_NOTUSED">
+
+  <envelope vis="BlueVis">
+    <shape type="Assembly"/>
+  </envelope>
+  
+  <type_flags type="DetType_SUPPORT + DetType_BEAMPIPE "/>
+
+  <parameter crossingangle="ILC_Main_Crossing_Angle" />
+  
+  <!-- central tube -->
+  <section type ="Center"                
+	   start="0*mm"                                  end="TUBE_innerCylinder_zEnd"
+           rMin1="TUBE_innerCylinder_rInner"  rMin2="TUBE_innerCylinder_rInner"       
+	   rMax1="TUBE_innerCylinder_rInner+TUBE_innerCylinder_thickness"        rMax2="TUBE_innerCylinder_rInner+TUBE_innerCylinder_thickness"
+	   material="G4_Be" name="IPInnerTube" />
+
+  <!-- first cone -->
+  <section type ="Center"
+           start="TUBE_firstCone_zStart"                               end="TUBE_firstCone_zEnd"
+           rMin1="TUBE_firstCone_rInnerStart"                          rMin2="TUBE_firstCone_rInnerEnd"
+           rMax1="TUBE_firstCone_rInnerStart+TUBE_firstCone_RadThickness" rMax2="TUBE_firstCone_rInnerEnd+TUBE_firstCone_RadThickness"
+           material="G4_Be" name="IPInnerBulge" />
+
+  <!-- second cylinder -->
+  <section type ="Center"  
+           start="TUBE_secondCylinder_zStart"                               end="TUBE_secondCylinder_zEnd" 
+           rMin1="TUBE_secondCylinder_rInner"                               rMin2="TUBE_secondCylinder_rInner"
+           rMax1="TUBE_secondCylinder_rInner+TUBE_secondCylinder_thickness" rMax2="TUBE_secondCylinder_rInner+TUBE_secondCylinder_thickness"
+           material="G4_Be" name="IPOuterTube" />
+
+  <!-- second cone, split into parts -->
+  <section type ="Center" 
+           start="TUBE_secondCone_part1_zStart"                                end="TUBE_secondCone_part1_zEnd"
+           rMin1="TUBE_secondCone_part1_rInnerStart"                             rMin2="TUBE_secondCone_part1_rInnerEnd"
+           rMax1="TUBE_secondCone_part1_rInnerStart+TUBE_secondCone_part1_RadThickness"  rMax2="TUBE_secondCone_part1_rInnerEnd+TUBE_secondCone_part1_RadThickness"
+           material="BeampipeBeCableMix" name="IPOuterTube" />
+
+  <section type ="Center" 
+           start="TUBE_secondCone_part2_zStart"                                end="TUBE_secondCone_part2_zEnd"
+           rMin1="TUBE_secondCone_part2_rInnerStart"                             rMin2="TUBE_secondCone_part2_rInnerEnd"
+           rMax1="TUBE_secondCone_part2_rInnerStart+TUBE_secondCone_part2_RadThickness"  rMax2="TUBE_secondCone_part2_rInnerEnd+TUBE_secondCone_part2_RadThickness"
+           material="BeampipeBeCableMix" name="IPOuterTube" />
+
+  <section type ="Center" 
+           start="TUBE_secondCone_part3_zStart"                                end="TUBE_secondCone_part3_zEnd"
+           rMin1="TUBE_secondCone_part3_rInnerStart"                             rMin2="TUBE_secondCone_part3_rInnerEnd"
+           rMax1="TUBE_secondCone_part3_rInnerStart+TUBE_secondCone_part3_RadThickness"  rMax2="TUBE_secondCone_part3_rInnerEnd+TUBE_secondCone_part3_RadThickness"
+           material="BeampipeBeCableMix" name="IPOuterTube" />
+
+  <section type ="Center" 
+           start="TUBE_secondCone_part4_zStart"                                end="TUBE_secondCone_part4_zEnd"
+           rMin1="TUBE_secondCone_part4_rInnerStart"                             rMin2="TUBE_secondCone_part4_rInnerEnd"
+           rMax1="TUBE_secondCone_part4_rInnerStart+TUBE_secondCone_part4_RadThickness"  rMax2="TUBE_secondCone_part4_rInnerEnd+TUBE_secondCone_part4_RadThickness"
+           material="BeampipeBeCableMix" name="IPOuterTube" />
+
+
+  <section type ="PunchedCenter"         
+	   start="TUBE_secondCone_part4_zEnd"    end="TUBE_secondCone_part4_zEnd+TUBE_cupola_thickness"   
+	   rMin1="0.0*mm"                        rMin2="TUBE_lumiTube_rInner" 
+	   rMax1 ="TUBE_secondCone_part4_rInnerEnd+TUBE_secondCone_part4_thickness"    rMax2="TUBE_secondCone_part4_rInnerEnd+TUBE_secondCone_part4_thickness" 
+	   material="G4_Be" name="LumiCalFront" />
+
+  <section type ="DnstreamClippedFront"  
+	   start="TUBE_secondCone_part4_zEnd+TUBE_cupola_thickness"    end="BeamCal_min_z-5*mm"
+           rMin1="TUBE_lumiTube_rInner" rMin2="TUBE_lumiTube_rInner"
+	   rMax1 ="TUBE_lumiTube_rInner+TUBE_lumiTube_thickness"    rMax2="TUBE_lumiTube_rInner+TUBE_lumiTube_thickness" 
+	   material="G4_Fe" name="LumiCalInner" />
+
+  <section type ="PunchedDnstream"       
+	   start="BeamCal_min_z-5*mm"            end="BeamCal_min_z-4*mm"         
+	   rMin1="14*mm"                         rMin2="16*mm"
+           rMax1 ="TUBE_lumiTube_rInner+TUBE_lumiTube_thickness"                      rMax2="TUBE_lumiTube_rInner+TUBE_lumiTube_thickness"       
+           material="G4_Fe" name="BeamCalFront" />
+
+  <section type ="UpstreamSlicedFront"   
+	   start="BeamCal_min_z-4*mm"                end="TUBE_QD0_Lstar"
+           rMin1="14*mm"                             rMin2="14*mm"   
+           rMax1 ="15*mm"                            rMax2="15*mm"  
+           material="G4_Fe" name="BeamCalLinkUpstream" />
+
+  <section type ="Upstream"
+           start="TUBE_QD0_Lstar"                    end="TUBE_QD0_Lstar+TUBE_QD0_length"
+           rMin1="TUBE_QD0_PipeInnerRadius"          rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="30*mm"                            rMax2="30*mm"
+           material="G4_Fe" name="QD0" />
+
+  <section type ="Upstream"
+           start="TUBE_QD0_Lstar+TUBE_QD0_length"    end="TUBE_QD0_Lstar+TUBE_QD0_length+TUBE_QD0_gap_SD0"
+           rMin1="TUBE_QD0_PipeInnerRadius"                            rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="TUBE_QD0_PipeOuterRadius"                            rMax2="TUBE_QD0_PipeOuterRadius"
+           material="G4_Fe" name="QD0toSD0" />
+
+  <section type ="Upstream"
+           start="TUBE_QD0_Lstar+TUBE_QD0_length+TUBE_QD0_gap_SD0"
+           end="TUBE_QD0_Lstar+TUBE_QD0_length+TUBE_QD0_gap_SD0+TUBE_SD0_length"
+           rMin1="TUBE_QD0_PipeInnerRadius"                             rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="30*mm"                            rMax2="30*mm"
+           material="G4_Fe" name="OC0andSD0" />
+
+  <section type ="Upstream"
+           start="TUBE_QD0_Lstar+TUBE_QD0_length+TUBE_QD0_gap_SD0+TUBE_SD0_length"
+           end="TUBE_QF1_Lstar"
+           rMin1="TUBE_QD0_PipeInnerRadius"                            rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="TUBE_QD0_PipeOuterRadius"                            rMax2="TUBE_QD0_PipeOuterRadius"
+           material="G4_Fe" name="SD0toQF1" />
+
+  <section type ="Upstream"
+           start="TUBE_QF1_Lstar"                    end="TUBE_QF1_Lstar+TUBE_QF1_length"
+           rMin1="TUBE_QD0_PipeInnerRadius"                              rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="30*mm"                            rMax2="30*mm"
+           material="G4_Fe" name="QF1" />
+
+  <section type ="Upstream"
+           start="TUBE_QF1_Lstar+TUBE_QF1_length"
+           end="TUBE_QF1_Lstar+TUBE_QF1_length+TUBE_QF1_gap_SF1"
+           rMin1="TUBE_QD0_PipeInnerRadius"                            rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="TUBE_QD0_PipeOuterRadius"                            rMax2="TUBE_QD0_PipeOuterRadius"
+           material="G4_Fe" name="QF1toSF1" />
+
+  <section type ="Upstream"
+           start="TUBE_QF1_Lstar+TUBE_QF1_length+TUBE_QF1_gap_SF1"
+           end="TUBE_QF1_Lstar+TUBE_QF1_length+TUBE_QF1_gap_SF1+TUBE_SF1_length"
+           rMin1="TUBE_QD0_PipeInnerRadius"                            rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="30*mm"                            rMax2="30*mm"
+           material="G4_Fe" name="SF1" />
+
+  <section type ="Upstream"
+           start="TUBE_QF1_Lstar+TUBE_QF1_length+TUBE_QF1_gap_SF1+TUBE_SF1_length"
+           end="12500*mm"
+           rMin1="TUBE_QD0_PipeInnerRadius"                            rMin2="TUBE_QD0_PipeInnerRadius"
+           rMax1="TUBE_QD0_PipeOuterRadius"                            rMax2="TUBE_QD0_PipeOuterRadius"
+           material="G4_Fe" name="MainUpstream" />
+
+  <section type ="Dnstream"              
+	   start="BeamCal_min_z-4*mm"                     end="TUBE_QDEX1A_Lstar"
+           rMin1="TUBE_QDEX1A_PipeInnerRadius"            rMin2="TUBE_QDEX1A_PipeInnerRadius"
+           rMax1="TUBE_QDEX1A_PipeOuterRadius"            rMax2="TUBE_QDEX1A_PipeOuterRadius"
+	   material="G4_Fe" name="BeamCalLinkDnstream" />
+
+  <section type ="Dnstream"              
+	   start="TUBE_QDEX1A_Lstar"                    end="TUBE_QDEX1A_Lstar+TUBE_QDEX1A_length"
+           rMin1="TUBE_QDEX1A_PipeInnerRadius"          rMin2="TUBE_QDEX1A_PipeInnerRadius" 
+           rMax1="40*mm"                                rMax2="40*mm"
+           material="G4_Fe" name="QDEX1A" />
+
+  <section type ="Dnstream"              
+	   start="TUBE_QDEX1A_Lstar+TUBE_QDEX1A_length" end="TUBE_QDEX1B_Lstar"
+           rMin1="TUBE_QDEX1A_PipeInnerRadius"          rMin2="TUBE_QDEX1A_PipeInnerRadius" 
+           rMax1="TUBE_QDEX1A_PipeOuterRadius"          rMax2="TUBE_QDEX1A_PipeOuterRadius"
+           material="G4_Fe" name="QDEX1AtoLink" />
+
+  <section type ="Dnstream"              
+	   start="TUBE_QDEX1B_Lstar"                    end="TUBE_QDEX1B_Lstar+TUBE_QDEX1B_length"
+           rMin1="TUBE_QDEX1A_PipeInnerRadius"          rMin2="TUBE_QDEX1A_PipeInnerRadius"
+           rMax1="50*mm"                                rMax2="50*mm"
+           material="G4_Fe" name="QDEX1B" />
+
+  <section type ="Dnstream"
+           start="TUBE_QDEX1B_Lstar+TUBE_QDEX1B_length"    end="12500*mm"
+           rMin1="TUBE_QDEX1A_PipeInnerRadius"             rMin2="TUBE_QDEX1A_PipeInnerRadius"
+           rMax1="TUBE_QDEX1A_PipeOuterRadius"             rMax2="TUBE_QDEX1A_PipeOuterRadius"
+           material="G4_Fe" name="MainDownstream" />
+
+
+</detector>
+
+  </detectors>        
+
+</lccdd>
